@@ -6,6 +6,7 @@ import checkStatusCol from './checkStatusCol'
 import checkTypecol from './checkTypeCol'
 import parseTSV from './tsvParser'
 import checkMotionComponent from './checkMotionComponent'
+import { getBIDSIgnore } from '../../utils/files/readDir.js'
 var path = require('path')
 
 /**
@@ -611,28 +612,36 @@ const TSV = (file, contents, fileList, callback) => {
           code: 68,
         }),
       )
+
     } else {
-      // check scans filenames match pathList
-      const filenameColumn = headers.indexOf('filename')
-      for (let l = 1; l < rows.length; l++) {
-        const row = rows[l]
-        const scanRelativePath = row[filenameColumn]
-        const scanFullPath = scanDirPath + '/' + scanRelativePath
+      (async () => {
+        const ig = await getBIDSIgnore(""); // load .bidsignore; "" refers to project root directory
+        // check scans filenames match pathList
+        const filenameColumn = headers.indexOf('filename')
+        for (let l = 1; l < rows.length; l++) {
+          const row = rows[l]
+          const scanRelativePath = row[filenameColumn]
+          const scanFullPath = scanDirPath + '/' + scanRelativePath
 
-        // check if scan matches full dataset path list
-        if (!pathList.includes(scanFullPath)) {
-          issues.push(
-            new Issue({
-              line: l,
-              file: file,
-              code: 129,
-              evidence: filenameEvidence(scanFullPath),
-            }),
-          )
+          // check if file should be ignored based on .bidsignore
+          if (ig.ignores(path.relative('/', scanFullPath))) {
+            continue
+          }
+
+          // check if scan matches full dataset path list
+          if (!pathList.includes(scanFullPath)) {
+            issues.push(
+              new Issue({
+                line: l,
+                file: file,
+                code: 129,
+                evidence: filenameEvidence(scanFullPath),
+              }),
+            )
+          }
         }
-      }
+      })();
     }
-
     // if _scans.tsv has the acq_time header, check datetime format
     if (headers.indexOf('acq_time') > -1) {
       checkAcqTimeFormat(rows, file, issues)

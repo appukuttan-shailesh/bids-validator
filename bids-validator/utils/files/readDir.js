@@ -323,7 +323,7 @@ export function defaultIgnore() {
     .add('/code')
 }
 
-async function getBIDSIgnore(dir) {
+export async function getBIDSIgnore(dir) {
   const ig = defaultIgnore()
 
   const bidsIgnoreFileObj = getBIDSIgnoreFileObj(dir)
